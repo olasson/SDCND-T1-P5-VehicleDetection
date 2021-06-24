@@ -1,0 +1,5 @@
+*.pyc
+data/*
+images/*
+videos/*
+test.py
