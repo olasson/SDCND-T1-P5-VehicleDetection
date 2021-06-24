@@ -4,6 +4,7 @@ import argparse
 from code.config import load_config, config_is_valid
 from code.misc import file_exists, folder_is_empty
 from code.io import glob_images
+from code.plots import plot_images
 
 ERROR_PREFIX = 'ERROR_MAIN: '
 INFO_PREFIX = 'INFO_MAIN: '
@@ -99,10 +100,16 @@ if __name__ == "__main__":
         print(ERROR_PREFIX + 'You are trying to show a set of images, but the folder: ' + folder_path_images + ' is empty!')
         exit()
 
-
+    # Show
 
     if flag_show_images:
+
         print(INFO_PREFIX + 'Showing images from folder: ' + folder_path_images)
-        
+
         images = glob_images(folder_path_images, n_max_images = n_max_images)
+
+        plot_images(images, title_fig_window = folder_path_images, n_max_cols = n_max_cols)
+
+
+
 
