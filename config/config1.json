@@ -1,0 +1,8 @@
+{
+    "color_space": "YCrCb",
+    "orientations": 16,
+    "pix_per_cell": 8,
+    "cell_per_block": 2,
+    "spatial_size": 16,
+    "histogram_bins": 32
+}
