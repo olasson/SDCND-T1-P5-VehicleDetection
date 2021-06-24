@@ -15,7 +15,8 @@ def config_is_valid(config):
 
     required_keys = ['color_space', 'orientations', 
                      'pix_per_cell', 'cell_per_block', 
-                     'spatial_size', 'histogram_bins']
+                     'spatial_size', 'histogram_bins',
+                     'pickled_features', 'pickled_model', 'pickled_scaler']
 
 
     if len(required_keys) != len(config):

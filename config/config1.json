@@ -4,5 +4,8 @@
     "pix_per_cell": 8,
     "cell_per_block": 2,
     "spatial_size": 16,
-    "histogram_bins": 32
+    "histogram_bins": 32,
+    "pickled_features": "./data/features.p",
+    "pickled_model": "./data/model.p",
+    "pickled_scaler": "./data/scaler.p"
 }
