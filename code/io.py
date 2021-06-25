@@ -3,6 +3,8 @@ import numpy as np
 
 from glob import glob
 
+import pickle
+
 from os.path import join as path_join
 
 def glob_file_paths(folder_path, n_max_samples = None, file_ext = '.png'):
@@ -49,22 +51,22 @@ def glob_images(folder_path, n_max_images = 50):
     return images
 
 
-def save_features(file_path, features_vehicles, features_non_vehicles):
+def save_data(file_path, data1, data2, key1, key2):
 
 
-    data = {'features_vehicles': features_vehicles, 'features_non_vehicles': features_non_vehicles} 
+    data = {key1: data1, key2: data2} 
 
     with open(file_path, mode = 'wb') as f:   
         pickle.dump(data, f, protocol = pickle.HIGHEST_PROTOCOL)
 
-def load_features(file_path):
+def load_data(file_path, key1, key2):
 
 
     with open(file_path, mode = 'rb') as f:
         data = pickle.load(f)
 
-    features_vehicles = data['features_vehicles']
-    features_non_vehicles = data['features_non_vehicles']
+    data1 = data[key1]
+    data2 = data[key2]
 
-    return features_vehicles, features_non_vehicles
+    return data1, data2
 
