@@ -6,6 +6,7 @@ from code.misc import file_exists, folder_is_empty
 from code.io import glob_images, save_data, load_data
 from code.plots import plot_images
 from code.features import extract_features
+from code.model import prepare_data, svc_train, svc_accuracy
 
 ERROR_PREFIX = 'ERROR_MAIN: '
 INFO_PREFIX = 'INFO_MAIN: '
@@ -16,7 +17,7 @@ FOLDER_PATH_NON_VEHICLES = './data/non-vehicles'
 KEY_VEHICLES = 'features_vehicles'
 KEY_NON_VEHICLES = 'features_non_vehicles'
 
-KEY_MODEL = 'model'
+KEY_SVC = 'svc'
 KEY_SCALER = 'scaler'
 
 
@@ -129,10 +130,11 @@ if __name__ == "__main__":
 
         exit()
 
+    # Extract
 
     if flag_features_are_extracted:
         print(INFO_PREFIX + 'Loading features!')
-        file_path_features, features_vehicles = load_data(file_path_features, KEY_VEHICLES, KEY_NON_VEHICLES)
+        features_vehicles, features_non_vehicles = load_data(file_path_features, KEY_VEHICLES, KEY_NON_VEHICLES)
     else:
         print(INFO_PREFIX + 'Extracting features!')
         features_vehicles = extract_features(FOLDER_PATH_VEHICLES, config)
@@ -140,6 +142,29 @@ if __name__ == "__main__":
 
         print(INFO_PREFIX + 'Saving features!')
         save_data(file_path_features, features_vehicles, features_non_vehicles, KEY_VEHICLES, KEY_NON_VEHICLES)
+
+    # Model
+
+    if flag_model_exists:
+        print(INFO_PREFIX + 'Loading model!')
+        svc, X_scaler = load_data(file_path_model, KEY_SVC, KEY_SCALER)
+    else:
+        print(INFO_PREFIX + 'Preparing data!')
+        X_train, y_train, X_test, y_test, X_scaler = prepare_data(features_vehicles, features_non_vehicles, random_state = 314)
+
+        print(INFO_PREFIX + 'Training model!')
+        svc = svc_train(X_train, y_train)
+
+        accuracy = svc_accuracy(svc, X_test, y_test)
+        print(INFO_PREFIX  + 'Model accuracy: ', accuracy)
+
+        print(INFO_PREFIX + 'Saving model!')
+        save_data(file_path_model, svc, X_scaler, KEY_SVC, KEY_SCALER)
+
+
+
+
+
 
 
 
