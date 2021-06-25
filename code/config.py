@@ -1,9 +1,6 @@
 
 import json
 
-
-
-
 def load_config(file_path):
     
     with open(file_path) as f:
@@ -11,19 +8,15 @@ def load_config(file_path):
     
     return config
 
-def config_is_valid(config):
+def config_is_valid(config, template = './config/config_template.json'):
 
-    required_keys = ['color_space', 'orientations', 
-                     'pix_per_cell', 'cell_per_block', 
-                     'spatial_size', 'histogram_bins',
-                     'pickled_features', 'pickled_model', 'pickled_scaler']
+    config_template = load_config(template)
 
-
-    if len(required_keys) != len(config):
+    if len(config_template) != len(config):
         return False
 
 
-    if list(config.keys()) != required_keys:
+    if list(config.keys()) != list(config_template.keys()):
         return False
 
     return True
