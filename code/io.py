@@ -48,3 +48,23 @@ def glob_images(folder_path, n_max_images = 50):
 
     return images
 
+
+def save_features(file_path, features_vehicles, features_non_vehicles):
+
+
+    data = {'features_vehicles': features_vehicles, 'features_non_vehicles': features_non_vehicles} 
+
+    with open(file_path, mode = 'wb') as f:   
+        pickle.dump(data, f, protocol = pickle.HIGHEST_PROTOCOL)
+
+def load_features(file_path):
+
+
+    with open(file_path, mode = 'rb') as f:
+        data = pickle.load(f)
+
+    features_vehicles = data['features_vehicles']
+    features_non_vehicles = data['features_non_vehicles']
+
+    return features_vehicles, features_non_vehicles
+
