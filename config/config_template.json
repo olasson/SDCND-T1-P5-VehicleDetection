@@ -1,0 +1,12 @@
+{
+    "color_space": "str",
+    "orientations": 0,
+    "pix_per_cell": 0,
+    "cell_per_block": 0,
+    "spatial_size": 0,
+    "histogram_bins": 0,
+    "window": 0,
+    "pickled_features": "myfile.p",
+    "pickled_model": "myfile.p",
+    "pickled_scaler": "myfile.p"
+}
