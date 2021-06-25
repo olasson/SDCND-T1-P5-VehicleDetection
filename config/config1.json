@@ -5,7 +5,7 @@
     "cell_per_block": 2,
     "spatial_size": 16,
     "histogram_bins": 32,
-    "pickled_features": "./data/features_.p",
+    "pickled_features": "./data/features_1.p",
     "pickled_model": "./data/model_1.p",
     "pickled_scaler": "./data/scaler_1.p"
 }
