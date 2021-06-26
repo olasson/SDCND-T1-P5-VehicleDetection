@@ -51,7 +51,7 @@ def plot_images(images, titles = None, title_fig_window = None, fig_size = (15, 
         
         plt.subplot(n_rows, n_cols, i + 1)
 
-        image = cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(images[i].astype('uint8'), cv2.COLOR_BGR2RGB)
         
         plt.imshow(image)
         
