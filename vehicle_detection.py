@@ -98,7 +98,6 @@ if __name__ == "__main__":
 
     file_path_features = config["pickled_features"]
     file_path_model = config["pickled_model"]
-    file_path_scaler = config["pickled_scaler"]
 
     # Init values
 

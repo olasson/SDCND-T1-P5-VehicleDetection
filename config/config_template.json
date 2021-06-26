@@ -7,6 +7,5 @@
     "histogram_bins": 0,
     "window": 0,
     "pickled_features": "myfile.p",
-    "pickled_model": "myfile.p",
-    "pickled_scaler": "myfile.p"
+    "pickled_model": "myfile.p"
 }

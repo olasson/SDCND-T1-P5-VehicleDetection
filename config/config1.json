@@ -7,6 +7,5 @@
     "histogram_bins": 32,
     "window": 64,
     "pickled_features": "./data/features_1.p",
-    "pickled_model": "./data/model_1.p",
-    "pickled_scaler": "./data/scaler_1.p"
+    "pickled_model": "./data/model_1.p"
 }
