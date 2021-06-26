@@ -56,3 +56,18 @@ def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step
 
 
     return windows, predictions
+
+
+def _image_search(image, slices, config, svc):
+
+    windows = []
+    predictions = []
+
+    for v_min, v_max, h_min, h_max, scale, cells_per_step in slices:
+        _windows, _predictions = _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc)
+
+        windows.append(_windows)
+        predictions.append(_predictions)
+
+    return windows, predictions
+
