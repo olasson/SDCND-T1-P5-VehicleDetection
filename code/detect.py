@@ -5,9 +5,7 @@ import numpy as np
 
 from code.features import extract_image_features
 
-def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc, scaler):
-
-    image_slice = image[v_min:v_max, h_min:h_max, :]
+def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, config, svc, scaler):
 
     if scale != 1.0:
 
@@ -16,10 +14,10 @@ def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step
         else:
             interpolation = cv.INTER_LINEAR
 
-        image_slice = cv2.resize(image_slice, (np.int(image_slice.shape[0] / scale), np.int(image_slice.shape[1] / scale)), interpolation = interpolation)
+        image_region = cv2.resize(image_region, (np.int(image_region.shape[0] / scale), np.int(image_region.shape[1] / scale)), interpolation = interpolation)
 
-    n_hblocks = (image_slice.shape[1] // config["pix_per_cell"]) - config["cell_per_block"] + 1
-    n_vblocks = (image_slice.shape[0] // config["pix_per_cell"]) - config["cell_per_block"] + 1
+    n_hblocks = (image_region.shape[1] // config["pix_per_cell"]) - config["cell_per_block"] + 1
+    n_vblocks = (image_region.shape[0] // config["pix_per_cell"]) - config["cell_per_block"] + 1
 
     n_blocks_per_window = (config["window"] // config["pix_per_cell"]) - config["cell_per_block"] + 1
 
@@ -38,13 +36,12 @@ def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step
             window_min_h = h_pos * config["pix_per_cell"]
             window_min_v = v_pos * config["pix_per_cell"]
 
-            window_image = image_slice[window_min_v:window_min_v + config["window"] , window_min_h:window_min_h + config["window"]]
+            window_image = image_region[window_min_v:window_min_v + config["window"] , window_min_h:window_min_h + config["window"]]
 
             features = extract_image_features(window_image, config, 3)
 
             features = scaler.transform(features.reshape(1, -1))
 
-            #prediction = svc.predict(features.reshape(1, -1))[0]
             prediction = svc.predict(features)[0]
 
             window_scale = np.int(config["window"] * scale)
@@ -61,13 +58,16 @@ def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step
     return windows, predictions
 
 
-def _image_search(image, slices, config, svc, scaler):
+def _image_search(image, regions, config, svc, scaler):
 
     windows = []
     predictions = []
 
-    for v_min, v_max, h_min, h_max, scale, cells_per_step in slices:
-        _windows, _predictions = _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc, scaler)
+    for v_min, v_max, h_min, h_max, scale, cells_per_step in regions:
+        
+        image_region = image[v_min:v_max, h_min:h_max, :]
+
+        _windows, _predictions = _image_region_search(image_region, v_min, h_min, scale, cells_per_step, config, svc, scaler)
 
         windows.append(_windows)
         predictions.append(_predictions)
