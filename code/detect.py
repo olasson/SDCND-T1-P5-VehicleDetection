@@ -3,6 +3,8 @@ import cv2
 
 import numpy as np
 
+from scipy.ndimage.measurements import label
+
 from code.features import extract_image_features
 
 def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, config, svc, scaler):
@@ -93,6 +95,7 @@ def _make_raw_heatmap(windows, predictions, n_rows, n_cols):
 
     n_samples = len(windows)
 
+
     for i in range(n_samples):
 
         if predictions[i] == 1:
@@ -100,3 +103,29 @@ def _make_raw_heatmap(windows, predictions, n_rows, n_cols):
             heatmap[window[0][1]:window[1][1], window[0][0]:window[1][0]] += (1.5 * sum(predictions))
 
     return heatmap
+
+
+def _bounding_boxes(heatmap, min_width, min_height):
+
+    labels = label(heatmap)
+
+    bounding_boxes = []
+
+    for car_n in range(1, labels[1] + 1):
+
+        tmp = (labels[0] == car_n).nonzero()
+
+        nonzero_x = np.array(tmp[1])
+        nonzero_y = np.array(tmp[0])
+
+        top_left = (np.min(nonzero_x), np.min(nonzero_y))
+        bottom_right = (np.max(nonzero_x), np.max(nonzero_y))
+
+        width = bottom_right[0] - top_left[0]
+        height = bottom_right[1] - top_left[1]
+
+        if (width >= min_width) and (height >= min_height):
+            bounding_boxes.append((top_left, bottom_right))
+
+
+    return bounding_boxes
