@@ -7,6 +7,8 @@ from scipy.ndimage.measurements import label
 
 from code.features import extract_image_features
 
+from collections import deque
+
 def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, config, svc, scaler):
 
     if scale != 1.0:
@@ -14,9 +16,10 @@ def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, conf
         if scale > 1.0:
             interpolation = cv2.INTER_AREA
         else:
-            interpolation = cv.INTER_LINEAR
+            interpolation = cv2.INTER_LINEAR
 
-        image_region = cv2.resize(image_region, (np.int(image_region.shape[0] / scale), np.int(image_region.shape[1] / scale)), interpolation = interpolation)
+        image_region = cv2.resize(image_region, (np.int(image_region.shape[1] / scale), np.int(image_region.shape[0] / scale)), interpolation = interpolation)
+
 
     n_hblocks = (image_region.shape[1] // config["pix_per_cell"]) - config["cell_per_block"] + 1
     n_vblocks = (image_region.shape[0] // config["pix_per_cell"]) - config["cell_per_block"] + 1
@@ -63,18 +66,12 @@ def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, conf
     return windows, predictions
 
 
-def _image_search(image, regions, config, svc, scaler):
+def _image_search(image, search_parameters, config, svc, scaler):
 
     windows = []
     predictions = []
 
-    for v_min, v_max, h_min, h_max, scale, cells_per_step in regions:
-
-        if h_min is None:
-            h_min = 0
-
-        if h_max is None:
-            h_max = image.shape[1]
+    for v_min, v_max, h_min, h_max, scale, cells_per_step in search_parameters:
         
         image_region = image[v_min:v_max, h_min:h_max, :]
 
@@ -89,7 +86,7 @@ def _image_search(image, regions, config, svc, scaler):
 
     return windows, predictions
 
-def _make_raw_heatmap(windows, predictions, n_rows, n_cols):
+def _make_heatmap(windows, predictions, n_rows, n_cols):
 
     heatmap = np.zeros((n_rows, n_cols), dtype = np.float)
 
@@ -129,3 +126,41 @@ def _bounding_boxes(heatmap, min_width, min_height):
 
 
     return bounding_boxes
+
+
+class VehicleDetector:
+
+    def __init__(self, svc, scaler, n_rows, n_cols, config, buffer_size = 8):
+        
+        self.svc = svc
+        self.scaler = scaler
+
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+
+        n_rows_min = int(n_rows / 1.8)
+        n_cols_min = 100
+
+        self.search_parameters  = [(n_rows_min, (n_rows_min + 100), n_cols // 4,  n_cols,   1, 1),
+                                   (n_rows_min, (n_rows_min + 130), n_cols // 3,  n_cols,   1, 2),
+                                   (n_rows_min, (n_rows_min + 200), n_cols // 2,  n_cols, 1.5, 2),
+                                   (n_rows_min, (n_rows_min + 250), n_cols_min,   n_cols,   2, 1)]
+
+        self.config = config
+        
+        self.heatmap_buffer = deque(maxlen = buffer_size)
+
+    def detect(self, image):
+
+        windows, predictions = _image_search(image, self.search_parameters, self.config, self.svc, self.scaler)
+
+        heatmap = _make_heatmap(windows, predictions, self.n_rows, self.n_cols)
+
+        self.heatmap_buffer.append(heatmap)
+
+        if len(self.heatmap_buffer) > 1:
+            heatmap = np.average(self.heatmap_buffer, axis = 0)
+
+        bounding_boxes = _bounding_boxes(heatmap, (0.8 * self.config["window"]), (0.5 * self.config["window"]))
+
+        return bounding_boxes
