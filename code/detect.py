@@ -38,6 +38,9 @@ def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, conf
 
             image_window = image_region[window_min_v:window_min_v + config["window"] , window_min_h:window_min_h + config["window"]]
 
+            if image_window.shape[0] < config["window"]  or image_window.shape[1] < config["window"] :
+                image_window = cv2.resize(image_window, (config["window"], config["window"]), interpolation = cv.INTER_LINEAR)
+
             features = extract_image_features(image_window, config, 3)
 
             features = scaler.transform(features.reshape(1, -1))
@@ -64,6 +67,12 @@ def _image_search(image, regions, config, svc, scaler):
     predictions = []
 
     for v_min, v_max, h_min, h_max, scale, cells_per_step in regions:
+
+        if h_min is None:
+            h_min = 0
+
+        if h_max is None:
+            h_max = image.shape[1]
         
         image_region = image[v_min:v_max, h_min:h_max, :]
 
@@ -78,3 +87,16 @@ def _image_search(image, regions, config, svc, scaler):
 
     return windows, predictions
 
+def _make_raw_heatmap(windows, predictions, n_rows, n_cols):
+
+    heatmap = np.zeros((n_rows, n_cols), dtype = np.float)
+
+    n_samples = len(windows)
+
+    for i in range(n_samples):
+
+        if predictions[i] == 1:
+            window = windows[i]
+            heatmap[window[0][1]:window[1][1], window[0][0]:window[1][0]] += (1.5 * sum(predictions))
+
+    return heatmap
