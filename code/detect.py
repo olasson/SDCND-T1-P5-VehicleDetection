@@ -5,7 +5,7 @@ import numpy as np
 
 from code.features import extract_image_features
 
-def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc):
+def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc, scaler):
 
     image_slice = image[v_min:v_max, h_min:h_max, :]
 
@@ -42,7 +42,10 @@ def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step
 
             features = extract_image_features(window_image, config, 3)
 
-            prediction = svc.predict(features.reshape(1, -1))[0]
+            features = scaler.transform(features.reshape(1, -1))
+
+            #prediction = svc.predict(features.reshape(1, -1))[0]
+            prediction = svc.predict(features)[0]
 
             window_scale = np.int(config["window"] * scale)
 
@@ -58,16 +61,20 @@ def _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step
     return windows, predictions
 
 
-def _image_search(image, slices, config, svc):
+def _image_search(image, slices, config, svc, scaler):
 
     windows = []
     predictions = []
 
     for v_min, v_max, h_min, h_max, scale, cells_per_step in slices:
-        _windows, _predictions = _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc)
+        _windows, _predictions = _image_slice_search(image, v_min, v_max, h_min, h_max, scale, cells_per_step, config, svc, scaler)
 
         windows.append(_windows)
         predictions.append(_predictions)
+
+    # Flatten lists
+    windows = [item for sublist in windows for item in sublist]
+    predictions = [item for sublist in predictions for item in sublist]
 
     return windows, predictions
 
