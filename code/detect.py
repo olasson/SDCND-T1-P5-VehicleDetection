@@ -36,9 +36,9 @@ def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, conf
             window_min_h = h_pos * config["pix_per_cell"]
             window_min_v = v_pos * config["pix_per_cell"]
 
-            window_image = image_region[window_min_v:window_min_v + config["window"] , window_min_h:window_min_h + config["window"]]
+            image_window = image_region[window_min_v:window_min_v + config["window"] , window_min_h:window_min_h + config["window"]]
 
-            features = extract_image_features(window_image, config, 3)
+            features = extract_image_features(image_window, config, 3)
 
             features = scaler.transform(features.reshape(1, -1))
 
