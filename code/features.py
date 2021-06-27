@@ -90,7 +90,7 @@ def extract_hog_image(image, orientations, pix_per_cell, cell_per_block):
     return hog_image
 
 
-def extract_image_features(image, config, n_channels):
+def extract_image_features(image, config, n_channels, feature_vector = True):
 
     image = _apply_color_transform(image, config["color_space"])
 
@@ -98,7 +98,7 @@ def extract_image_features(image, config, n_channels):
 
     f_hist = _extract_histogram_features(image, config["histogram_bins"], n_channels)
 
-    f_hog = _extract_hog_features(image, config["orientations"], config["pix_per_cell"], config["cell_per_block"], n_channels)
+    f_hog = _extract_hog_features(image, config["orientations"], config["pix_per_cell"], config["cell_per_block"], n_channels, feature_vector = feature_vector)
 
     features = np.concatenate((f_spatial, f_hist, f_hog))
 
