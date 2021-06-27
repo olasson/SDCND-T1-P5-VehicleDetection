@@ -5,9 +5,9 @@ from skimage.feature import hog
 
 from code.io import glob_file_paths
 
-# Internals
+# Helper
 
-def _apply_color_transform(image, c_space = None):
+def _map_color_transform(c_space = None):
 
     if c_space is None:
         return image
@@ -23,113 +23,124 @@ def _apply_color_transform(image, c_space = None):
     elif c_space == 'YCrCb':
         conversion = cv2.COLOR_BGR2YCrCb
 
-    image = cv2.cvtColor(image, conversion)
-
-    return image
+    return conversion
 
 
-def _hog_features(image, orientations, pix_per_cell, cell_per_block, visualize = False, feature_vector = True):
+class FeatureExtractor:
+    def __init__(self, config):
+        
+        self.conversion = _map_color_transform(config["color_space"])
+        self.orientations = config["orientations"]
+        self.pix_per_cell = config["pix_per_cell"]
+        self.cell_per_block = config["cell_per_block"]
+        self.spatial_size = config["spatial_size"]
+        self.histogram_bins = config["histogram_bins"]
 
-    tmp = hog(image, orientations = orientations, 
-                          pixels_per_cell = (pix_per_cell, pix_per_cell),
-                          cells_per_block = (cell_per_block, cell_per_block), 
-                          transform_sqrt = True,
-                          visualize = visualize,
-                          feature_vector = feature_vector,
-                          block_norm= 'L2-Hys')
+        self.n_channels = 3
 
-    if visualize:
-        features = None
-        hog_image = tmp[1]
-    else:
-        features = tmp
+    # HOG features
+
+    def _hog_worker(self, image):
+
+        features = hog(image, orientations = self.orientations, 
+                              pixels_per_cell = (self.pix_per_cell, self.pix_per_cell),
+                              cells_per_block = (self.cell_per_block, self.cell_per_block), 
+                              transform_sqrt = True,
+                              visualize = False,
+                              feature_vector = True,
+                              block_norm= 'L2-Hys')
+
         hog_image = None
 
-    return features, hog_image
+        return features, hog_image
 
 
+    def _extract_hog_features(self, image, cpu_pool = None):
 
-def _extract_hog_features(image, orientations, pix_per_cell, cell_per_block, n_channels, feature_vector = True):
+        if cpu_pool is None:
+            features = list(map(lambda ch:self._hog_worker(image[:,:,ch])[0], range(self.n_channels)))
+            features = np.ravel(features)
+        else:
+            tmp = cpu_pool.map(self._hog_worker, [image[:,:,0], image[:,:,1], image[:,:,2]])
+            features = np.concatenate((tmp[0][0], tmp[1][0], tmp[2][0]))
 
-    features = list(map(lambda ch:_hog_features(image[:,:,ch], orientations, pix_per_cell, cell_per_block, feature_vector = feature_vector)[0], range(n_channels)))
+        return features
 
-    features = np.ravel(features)
+    # Spatial features
 
-    return features
+    def _extract_spatial_features(self, image):
 
-def _extract_spatial_features(image, spatial_size):
+        # ravel() flattens the image to a vector
+        features = cv2.resize(image, (self.spatial_size, self.spatial_size)).ravel()
 
-    # ravel() flattens the image to a vector
-    features = cv2.resize(image, (spatial_size, spatial_size)).ravel()
+        return features
 
-    return features
+    # Histogram features
 
-def _extract_histogram_features(image, n_bins, n_channels):
-
-    def _hist(channel, n_bins):
+    def _hist_worker(self, channel):
         
-        h = np.histogram(channel, bins = n_bins, range = (0, 256))[0]
+        h = np.histogram(channel, bins = self.histogram_bins, range = (0, 256))[0]
 
         return h
 
-    # Loop over each color channel in image and create a histogram for each
-    histograms = list(map(lambda channel:_hist(image[:, :, channel], n_bins), range(n_channels)))
+    def _extract_histogram_features(self, image, cpu_pool = None):
 
-    # Create a single histogram vector
-    features = np.concatenate(histograms)
-
-    return features
-
-# Externals
+        # Loop over each color channel in image and create a histogram for each
+        if cpu_pool is None:
+            histograms = list(map(lambda channel:self._hist_worker(image[:, :, channel]), range(self.n_channels)))
+        else:
+            histograms = cpu_pool.map(self._hist_worker, [image[:,:,0], image[:,:,1], image[:,:,2]])
 
 
-def extract_hog_image(image, orientations, pix_per_cell, cell_per_block):
+        features = np.concatenate(histograms)
+        
 
-    hog_image = _hog_features(image, orientations, pix_per_cell, cell_per_block, visualize = True)[1]
+        return features
 
-    return hog_image
-
-
-def extract_image_features(image, config, n_channels, feature_vector = True):
-
-    image = _apply_color_transform(image, config["color_space"])
-
-    f_spatial = _extract_spatial_features(image, config["spatial_size"])
-
-    f_hist = _extract_histogram_features(image, config["histogram_bins"], n_channels)
-
-    f_hog = _extract_hog_features(image, config["orientations"], config["pix_per_cell"], config["cell_per_block"], n_channels, feature_vector = feature_vector)
-
-    features = np.concatenate((f_spatial, f_hist, f_hog))
-
-    return features
+    # Externals
 
 
-def extract_features(folder_path, config):
+    def extract_image_features(self, image, cpu_pool = None):
 
-    # Glob the file paths instead of images to save some memory
-    file_paths = glob_file_paths(folder_path)
+        #image = _apply_color_transform(image, self.color_space)
+        image = cv2.cvtColor(image, self.conversion)
 
-    n_images = len(file_paths)
+        f_spatial = self._extract_spatial_features(image)
 
-    image = cv2.imread(file_paths[0])
+        f_hist = self._extract_histogram_features(image, cpu_pool = cpu_pool)
 
-    n_channels = image.shape[2]
+        f_hog = self._extract_hog_features(image, cpu_pool = cpu_pool)
 
-    # Pre-allocate a numpy array
+        features = np.concatenate((f_spatial, f_hist, f_hog))
 
-    n_features_per_image = len(extract_image_features(image, config, n_channels))
-    
-    features = np.zeros((n_images, n_features_per_image), dtype = np.float)
-
-    for i in range(n_images):
-
-        image = cv2.imread(file_paths[i])
-
-        features[i] = extract_image_features(image, config, n_channels)
-
-        if i % 100 == 0:
-            print('INFO:extract_image_features():' + folder_path +': Image ' + str(i) + ' of ' + str(n_images))
+        return features
 
 
-    return features
+    def extract_features(self, folder_path, cpu_pool = None):
+
+        # Glob the file paths instead of images to save some memory
+        file_paths = glob_file_paths(folder_path)
+
+        n_images = len(file_paths)
+
+        image = cv2.imread(file_paths[0])
+
+        n_channels = image.shape[2]
+
+        # Pre-allocate a numpy array
+
+        n_features_per_image = len(self.extract_image_features(image, cpu_pool = cpu_pool))
+        
+        features = np.zeros((n_images, n_features_per_image), dtype = np.float)
+
+        for i in range(n_images):
+
+            image = cv2.imread(file_paths[i])
+
+            features[i] = self.extract_image_features(image, cpu_pool = cpu_pool)
+
+            if i % 100 == 0:
+                print('INFO:FeatureExtractor.extract_features():' + folder_path +': Image ' + str(i) + ' of ' + str(n_images))
+
+
+        return features

@@ -1,10 +1,14 @@
 
 import argparse
 
+import signal
+from multiprocessing import Pool
+
 import numpy as np
 
 import cv2
 
+from os import cpu_count
 from os.path import basename
 from os.path import join as path_join
 
@@ -12,7 +16,7 @@ from code.config import load_config, config_is_valid
 from code.misc import file_exists, folder_is_empty
 from code.io import glob_images, save_data, load_data
 from code.plots import plot_images
-from code.features import extract_features
+from code.features import FeatureExtractor
 from code.model import prepare_data, svc_train, svc_accuracy
 from code.detect import VehicleDetector
 from code.draw import draw_bounding_boxes
@@ -108,6 +112,12 @@ if __name__ == "__main__":
         help = 'Output video codec.'
     )
 
+    parser.add_argument(
+        '--cpu_pool',
+        action = 'store_true',
+        help = 'Use all CPU cores.'
+    )
+
     # Config
 
     parser.add_argument(
@@ -161,6 +171,25 @@ if __name__ == "__main__":
     flag_features_are_extracted = file_exists(file_path_features)
     flag_model_exists = file_exists(file_path_model)
 
+    # Cpu pool
+
+    if args.cpu_pool:
+
+        
+        cpu_count = cpu_count()
+
+        def worker_init():
+            # Suppress CTR+C spam in console
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        cpu_pool = Pool(cpu_count, initializer = worker_init)
+
+        print(INFO_PREFIX + 'Parallel processing enabled! Number of CPU cores: ' + str(cpu_count))
+
+    else:
+        cpu_pool = None
+
+
     # Checks
 
     if flag_show_images and folder_is_empty(folder_path_images):
@@ -195,9 +224,11 @@ if __name__ == "__main__":
             print(INFO_PREFIX + 'Loading features!')
             features_vehicles, features_non_vehicles = load_data(file_path_features, KEY_VEHICLES, KEY_NON_VEHICLES)
         else:
+            feature_extractor = FeatureExtractor(config)
+
             print(INFO_PREFIX + 'Extracting features!')
-            features_vehicles = extract_features(FOLDER_PATH_VEHICLES, config)
-            features_non_vehicles = extract_features(FOLDER_PATH_NON_VEHICLES, config)
+            features_vehicles = feature_extractor.extract_features(FOLDER_PATH_VEHICLES, cpu_pool = cpu_pool)
+            features_non_vehicles = feature_extractor.extract_features(FOLDER_PATH_NON_VEHICLES, cpu_pool = cpu_pool)
 
             print(INFO_PREFIX + 'Saving features!')
             save_data(file_path_features, features_vehicles, features_non_vehicles, KEY_VEHICLES, KEY_NON_VEHICLES)
@@ -277,7 +308,7 @@ if __name__ == "__main__":
 
             if ret:
                 
-                bounding_boxes = vehicle_detector.detect(frame)
+                bounding_boxes = vehicle_detector.detect(frame, cpu_pool = cpu_pool)
                 frame = draw_bounding_boxes(frame, bounding_boxes, fill = True)
 
 
