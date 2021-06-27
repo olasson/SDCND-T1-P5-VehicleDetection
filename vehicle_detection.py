@@ -3,6 +3,11 @@ import argparse
 
 import numpy as np
 
+import cv2
+
+from os.path import basename
+from os.path import join as path_join
+
 from code.config import load_config, config_is_valid
 from code.misc import file_exists, folder_is_empty
 from code.io import glob_images, save_data, load_data
@@ -14,6 +19,8 @@ from code.draw import draw_bounding_boxes
 
 ERROR_PREFIX = 'ERROR_MAIN: '
 INFO_PREFIX = 'INFO_MAIN: '
+
+FOLDER_VIDEOS_OUTPUT = './videos/result'
 
 FOLDER_PATH_VEHICLES = './data/vehicles'
 FOLDER_PATH_NON_VEHICLES = './data/non-vehicles'
@@ -68,7 +75,7 @@ if __name__ == "__main__":
         help = 'The maximum number of columns in the image plot.'
     )
 
-    # Videos
+    # Video
 
     parser.add_argument(
         '--video',
@@ -76,6 +83,29 @@ if __name__ == "__main__":
         nargs = '?',
         default = '',
         help = 'File path to a folder video file to run the pipeline on.',
+    )
+
+    parser.add_argument(
+        '--frame_size',
+        type = int,
+        nargs = '+',
+        default = [1280, 720],
+        help = 'The frame size of the output video on the form [n_cols, n_rows]'
+    )
+
+    parser.add_argument(
+        '--fps',
+        type = int,
+        default = 25,
+        help = 'The fps of the output video'
+    )
+
+    parser.add_argument(
+        '--video_codec',
+        type = str,
+        nargs = '?',
+        default = 'mp4v',
+        help = 'Output video codec.'
     )
 
     # Config
@@ -114,11 +144,19 @@ if __name__ == "__main__":
     n_max_images = args.n_max_images
     n_max_cols = args.n_max_cols
 
+    fps = args.fps
+
+    n_rows = args.frame_size[1]
+    n_cols = args.frame_size[0]
+
+    n_max_cols = args.n_max_cols
+
     # Init flags
 
     flag_show_images = args.show
 
-    flag_run_on_images = args.detect 
+    flag_run_on_images = args.detect
+    flag_run_on_video = (file_path_video != '')
 
     flag_features_are_extracted = file_exists(file_path_features)
     flag_model_exists = file_exists(file_path_model)
@@ -131,6 +169,10 @@ if __name__ == "__main__":
 
     if flag_run_on_images and folder_is_empty(folder_path_images):
         print(ERROR_PREFIX + 'You are trying to run the pipeline on a set of images, but the folder: ' + folder_path_images + ' is empty!')
+        exit()
+
+    if flag_run_on_video and (not file_exists(file_path_video)):
+        print(ERROR_PREFIX + 'You are trying to run the pipeline on a video, but the file: ' + file_path_video + ' does not exist!')
         exit()
 
     # Show
@@ -204,6 +246,55 @@ if __name__ == "__main__":
             print(INFO_PREFIX + 'Processed image ' + str(i + 1) + ' of ' + str(n_images) + '!')
 
         plot_images(images_result, titles, title_fig_window = folder_path_images, n_max_cols = n_max_cols)
+
+        exit()
+
+
+
+
+    if flag_run_on_video:
+        print(INFO_PREFIX + 'Running pipeline on video!')
+
+        # Store the centroids found in the previous 15 frames to handle errors
+        vehicle_detector = VehicleDetector(svc, X_scaler, n_rows, n_cols, config)
+
+        cap = cv2.VideoCapture(file_path_video)
+
+        n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        k = file_path_config[15]
+
+        file_path_video_outut = path_join(FOLDER_VIDEOS_OUTPUT, 'output_' + k + '_' + basename(file_path_video))
+
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(file_path_video_outut, fourcc, fps, tuple(args.frame_size))
+        
+        i = 0
+
+        while(cap.isOpened()):
+
+            ret, frame = cap.read()
+
+            if ret:
+                
+                bounding_boxes = vehicle_detector.detect(frame)
+                frame = draw_bounding_boxes(frame, bounding_boxes, fill = True)
+
+
+                i = i + 1
+                #if i % 50 == 0:
+                print(INFO_PREFIX + 'Frame ' + str(i) + '/' + str(n_frames))
+                
+                out.write(frame)
+            else:
+                break
+
+        cap.release()
+        out.release()
+
+        print('Done processing video!')
+        print('Number of frames successfully processed: ', i)
+        print('Result is found here: ', file_path_video_outut)
 
 
 
