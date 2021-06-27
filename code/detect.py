@@ -144,10 +144,15 @@ class VehicleDetector:
         n_rows_min = int(n_rows / 1.8)
         n_cols_min = 100
 
+        """
         self.search_parameters  = [(n_rows_min, (n_rows_min + 100), n_cols // 4,  n_cols,   1, 1),
                                    (n_rows_min, (n_rows_min + 130), n_cols // 3,  n_cols,   1, 2),
                                    (n_rows_min, (n_rows_min + 200), n_cols // 2,  n_cols, 1.5, 2),
                                    (n_rows_min, (n_rows_min + 250), n_cols_min,   n_cols,   2, 1)]
+        """
+        self.search_parameters  = [(n_rows_min, (n_rows_min + 200), n_cols // 2,  n_cols, 1.5, 2),
+                                   (n_rows_min, (n_rows_min + 250), n_cols_min,   n_cols,   2, 1)]
+
 
         self.config = config
         
