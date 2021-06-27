@@ -9,6 +9,8 @@ from code.features import extract_image_features
 
 from collections import deque
 
+HEAT_INCREMENT = 10
+
 def _image_region_search(image_region, v_min, h_min, scale, cells_per_step, config, svc, scaler):
 
     if scale != 1.0:
@@ -97,7 +99,8 @@ def _make_heatmap(windows, predictions, n_rows, n_cols):
 
         if predictions[i] == 1:
             window = windows[i]
-            heatmap[window[0][1]:window[1][1], window[0][0]:window[1][0]] += (1.5 * sum(predictions))
+            heatmap[window[0][1]:window[1][1], window[0][0]:window[1][0]] += HEAT_INCREMENT
+            #heatmap[window[0][1]:window[1][1], window[0][0]:window[1][0]] += (1.5 * sum(predictions))
 
     return heatmap
 
@@ -160,6 +163,10 @@ class VehicleDetector:
 
         if len(self.heatmap_buffer) > 1:
             heatmap = np.average(self.heatmap_buffer, axis = 0)
+
+        heatmap[heatmap < 3 * HEAT_INCREMENT] = 0
+
+        heatmap = np.clip(heatmap, 0, 255)
 
         bounding_boxes = _bounding_boxes(heatmap, (0.8 * self.config["window"]), (0.5 * self.config["window"]))
 
